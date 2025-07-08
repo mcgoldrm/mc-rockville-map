@@ -100,6 +100,7 @@
         <div>
             <button id="clearAll">🗑️ Clear All</button>
             <button id="fitBounds">🎯 Fit to Campus</button>
+            <button id="testLoad">🔧 Test Load (Debug)</button>
         </div>
         <div class="status" id="status">
             Loading campus data...
@@ -511,6 +512,11 @@
             // Fallback to default view
             map.setView([39.0982, -77.1591], 17);
             updateStatus('🎯 Centered on default campus location');
+        });
+
+        document.getElementById('testLoad').addEventListener('click', () => {
+            updateStatus('🔧 Running manual test load...');
+            loadOSMFileAndData();
         });
 
         // Auto-load everything when page loads
