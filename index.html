@@ -487,7 +487,7 @@
             reader.readAsText(file);
         });
 
-        // Button event listeners
+        // Button event listeners with error checking
         document.getElementById('clearAll').addEventListener('click', () => {
             Object.values(layers).forEach(layer => layer.clearLayers());
             allFeatures = [];
@@ -514,17 +514,35 @@
             updateStatus('🎯 Centered on default campus location');
         });
 
-        document.getElementById('testLoad').addEventListener('click', () => {
-            updateStatus('🔧 Running manual test load...');
-            loadOSMFileAndData();
-        });
+        // Add test button listener with error checking
+        const testButton = document.getElementById('testLoad');
+        if (testButton) {
+            testButton.addEventListener('click', () => {
+                updateStatus('🔧 Running manual test load...');
+                loadOSMFileAndData();
+            });
+        } else {
+            console.error('Test load button not found in DOM');
+        }
 
         // Auto-load everything when page loads
         document.addEventListener('DOMContentLoaded', function() {
+            updateStatus('Initializing campus map...');
             // Small delay to ensure everything is initialized
             setTimeout(() => {
                 loadOSMFileAndData();
-            }, 500);
+            }, 1000);
+        });
+
+        // Also try loading when window is fully loaded (backup)
+        window.addEventListener('load', function() {
+            // Only try again if we haven't succeeded yet
+            setTimeout(() => {
+                if (osmData.buildings.length === 0 && osmData.amenities.length === 0) {
+                    updateStatus('Retrying campus data load...');
+                    loadOSMFileAndData();
+                }
+            }, 2000);
         });
 
         // Add layer control
