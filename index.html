@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Montgomery College Campus Map - Simple Version</title>
-    
+    <title>Montgomery College Campus Map</title>
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    
+
     <style>
         body {
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
         }
-        
+
         #map {
             height: 100vh;
             width: 100%;
         }
-        
+
         .controls {
             position: absolute;
             top: 10px;
@@ -29,23 +29,15 @@
             padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            max-width: 400px;
+            max-width: 300px;
         }
-        
+
         .controls h3 {
             margin: 0 0 10px 0;
             color: #2c5aa0;
             font-size: 16px;
         }
-        
-        .file-input {
-            margin: 10px 0;
-        }
-        
-        .file-input input[type="file"] {
-            margin: 5px 0;
-        }
-        
+
         .controls button {
             background: #2c5aa0;
             color: white;
@@ -56,16 +48,11 @@
             margin: 3px;
             font-size: 12px;
         }
-        
+
         .controls button:hover {
             background: #1e3d6f;
         }
-        
-        .controls button:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
-        }
-        
+
         .status {
             margin-top: 10px;
             font-size: 12px;
@@ -73,7 +60,7 @@
             max-height: 100px;
             overflow-y: auto;
         }
-        
+
         .search-container {
             position: absolute;
             top: 10px;
@@ -84,7 +71,7 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
-        
+
         .search-container input {
             width: 200px;
             padding: 8px;
@@ -96,26 +83,25 @@
 <body>
     <div class="controls">
         <h3>🏫 Montgomery College Campus Map</h3>
-        
+
         <div>
             <button id="clearAll">🗑️ Clear All</button>
             <button id="fitBounds">🎯 Fit to Campus</button>
-            <button id="testLoad">🔧 Test Load (Debug)</button>
         </div>
         <div class="status" id="status">
             Loading campus data...
         </div>
     </div>
-    
+
     <div class="search-container">
-        <input type="text" id="buildingSearch" placeholder="Search buildings..." disabled />
+        <input type="text" id="buildingSearch" placeholder="Search buildings..." />
     </div>
-    
+
     <div id="map"></div>
 
     <!-- Leaflet JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    
+
     <script>
         // Initialize map centered on Montgomery College
         const map = L.map('map').setView([39.0982, -77.1591], 17);
@@ -151,22 +137,14 @@
             statusEl.scrollTop = statusEl.scrollHeight;
         }
 
-        // Enable/disable buttons
-        function setButtonsEnabled(enabled) {
-            document.getElementById('loadBuildings').disabled = !enabled;
-            document.getElementById('loadAmenities').disabled = !enabled;
-            document.getElementById('loadParking').disabled = !enabled;
-            document.getElementById('buildingSearch').disabled = !enabled;
-        }
-
         // Parse OSM XML data
         function parseOSMData(xmlString) {
             updateStatus('Parsing OSM file...');
-            
+
             try {
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
-                
+
                 // Check for parsing errors
                 const parserError = xmlDoc.querySelector('parsererror');
                 if (parserError) {
@@ -179,14 +157,14 @@
                 // Parse nodes
                 const nodes = xmlDoc.getElementsByTagName('node');
                 updateStatus(`Processing ${nodes.length} nodes...`);
-                
+
                 for (let node of nodes) {
                     const id = node.getAttribute('id');
                     const lat = parseFloat(node.getAttribute('lat'));
                     const lon = parseFloat(node.getAttribute('lon'));
-                    
+
                     osmData.nodes[id] = { lat, lon };
-                    
+
                     // Check for amenities in nodes
                     const tags = extractTags(node);
                     if (isAmenity(tags)) {
@@ -203,22 +181,22 @@
                 // Parse ways
                 const ways = xmlDoc.getElementsByTagName('way');
                 updateStatus(`Processing ${ways.length} ways...`);
-                
+
                 for (let way of ways) {
                     const id = way.getAttribute('id');
                     const tags = extractTags(way);
-                    
+
                     // Get way coordinates
                     const nodeRefs = way.getElementsByTagName('nd');
                     const coords = [];
-                    
+
                     for (let ndRef of nodeRefs) {
                         const nodeId = ndRef.getAttribute('ref');
                         if (osmData.nodes[nodeId]) {
                             coords.push([osmData.nodes[nodeId].lat, osmData.nodes[nodeId].lon]);
                         }
                     }
-                    
+
                     if (coords.length >= 3) {
                         if (isBuilding(tags)) {
                             osmData.buildings.push({
@@ -242,8 +220,13 @@
                 }
 
                 updateStatus(`✅ Parsed: ${osmData.buildings.length} buildings, ${osmData.amenities.length} amenities, ${osmData.parking.length} parking areas`);
-                setButtonsEnabled(true);
-                
+
+                // Auto-load all data after parsing
+                setTimeout(() => loadBuildings(), 500);
+                setTimeout(() => loadAmenities(), 1000);
+                setTimeout(() => loadParking(), 1500);
+                setTimeout(() => updateStatus('✅ Campus map ready! Use search to find buildings.'), 2000);
+
             } catch (error) {
                 updateStatus(`❌ Error parsing OSM file: ${error.message}`, true);
             }
@@ -253,7 +236,7 @@
         function extractTags(element) {
             const tags = {};
             const tagElements = element.getElementsByTagName('tag');
-            
+
             for (let tag of tagElements) {
                 const key = tag.getAttribute('k');
                 const value = tag.getAttribute('v');
@@ -283,7 +266,7 @@
         function loadBuildings() {
             layers.buildings.clearLayers();
             allFeatures = allFeatures.filter(f => f.type !== 'building');
-            
+
             osmData.buildings.forEach(building => {
                 if (building.coords.length >= 3) {
                     // Close polygon if needed
@@ -291,7 +274,7 @@
                     if (coords[0][0] !== coords[coords.length-1][0] || coords[0][1] !== coords[coords.length-1][1]) {
                         coords.push(coords[0]);
                     }
-                    
+
                     const polygon = L.polygon(coords, {
                         color: '#2c5aa0',
                         fillColor: '#3498db',
@@ -308,10 +291,10 @@
                             <p><strong>Source:</strong> Campus OSM Data</p>
                         </div>
                     `;
-                    
+
                     polygon.bindPopup(popupContent);
                     layers.buildings.addLayer(polygon);
-                    
+
                     // Add to search
                     allFeatures.push({
                         layer: polygon,
@@ -327,7 +310,7 @@
         function loadAmenities() {
             layers.amenities.clearLayers();
             allFeatures = allFeatures.filter(f => f.type !== 'amenity');
-            
+
             osmData.amenities.forEach(amenity => {
                 // Choose icon
                 let icon = '📍';
@@ -357,10 +340,10 @@
                         <p><strong>Source:</strong> Campus OSM Data</p>
                     </div>
                 `;
-                
+
                 marker.bindPopup(popupContent);
                 layers.amenities.addLayer(marker);
-                
+
                 allFeatures.push({
                     layer: marker,
                     name: amenity.tags.name || amenity.type,
@@ -373,14 +356,14 @@
         // Load parking onto map
         function loadParking() {
             layers.parking.clearLayers();
-            
+
             osmData.parking.forEach(parking => {
                 if (parking.coords.length >= 3) {
                     const coords = [...parking.coords];
                     if (coords[0][0] !== coords[coords.length-1][0] || coords[0][1] !== coords[coords.length-1][1]) {
                         coords.push(coords[0]);
                     }
-                    
+
                     const polygon = L.polygon(coords, {
                         color: '#9b59b6',
                         fillColor: '#e67e22',
@@ -397,12 +380,12 @@
                             <p><strong>Source:</strong> Campus OSM Data</p>
                         </div>
                     `;
-                    
+
                     polygon.bindPopup(popupContent);
                     layers.parking.addLayer(polygon);
                 }
             });
-            
+
             // Auto-center map after all data is loaded
             setTimeout(() => {
                 if (osmData.buildings.length > 0) {
@@ -414,80 +397,60 @@
             }, 100);
         }
 
+        // Load campus.osm file automatically
+        async function loadCampusData() {
+            updateStatus('Loading campus.osm file...');
+
+            try {
+                const response = await fetch('./campus.osm', {
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to load campus.osm (${response.status})`);
+                }
+
+                const xmlString = await response.text();
+
+                if (xmlString.length === 0) {
+                    throw new Error('campus.osm file is empty');
+                }
+
+                updateStatus('✅ Campus.osm loaded successfully');
+                parseOSMData(xmlString);
+
+            } catch (error) {
+                updateStatus(`❌ Error loading campus data: ${error.message}`, true);
+                updateStatus('Make sure campus.osm is in the same directory as index.html', true);
+            }
+        }
+
         // Search functionality
-        const searchInput = document.getElementById('buildingSearch');
-        searchInput.addEventListener('input', function() {
+        document.getElementById('buildingSearch').addEventListener('input', function() {
             const searchTerm = this.value.toLowerCase();
-            
+
             if (searchTerm.length < 2) return;
 
-            const matches = allFeatures.filter(feature => 
-                feature.searchTerms.some(term => 
+            const matches = allFeatures.filter(feature =>
+                feature.searchTerms.some(term =>
                     term.toLowerCase().includes(searchTerm)
                 )
             );
 
             if (matches.length > 0) {
                 const feature = matches[0];
-                
+
                 if (feature.layer.getLatLng) {
                     map.setView(feature.layer.getLatLng(), 18);
                 } else if (feature.layer.getBounds) {
                     map.fitBounds(feature.layer.getBounds());
                 }
-                
+
                 feature.layer.openPopup();
             }
         });
 
-        // Load OSM file automatically from same directory
-        async function loadOSMFile() {
-            updateStatus('Loading campus.osm file...');
-            
-            try {
-                const response = await fetch('./campus.osm');
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to load campus.osm (${response.status}). Make sure campus.osm is in the same folder as this HTML file.`);
-                }
-                
-                const xmlString = await response.text();
-                updateStatus('✅ Campus.osm loaded successfully');
-                parseOSMData(xmlString);
-                
-            } catch (error) {
-                updateStatus(`❌ Could not load campus.osm automatically: ${error.message}`, true);
-                updateStatus('💡 Use the file upload option instead, or make sure campus.osm is in the same directory', false);
-            }
-        }
-
-        // Load all data at once
-        function loadAllData() {
-            updateStatus('🚀 Loading all campus data...');
-            loadBuildings();
-            setTimeout(() => loadAmenities(), 500);
-            setTimeout(() => loadParking(), 1000);
-            updateStatus('✅ All campus data loaded!');
-        }
-
-        // File input handler (for manual upload)
-        document.getElementById('osmFileUpload').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            updateStatus(`Reading uploaded file: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`);
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                parseOSMData(e.target.result);
-            };
-            reader.onerror = function() {
-                updateStatus('❌ Error reading uploaded file', true);
-            };
-            reader.readAsText(file);
-        });
-
-        // Button event listeners with error checking
+        // Button event listeners
         document.getElementById('clearAll').addEventListener('click', () => {
             Object.values(layers).forEach(layer => layer.clearLayers());
             allFeatures = [];
@@ -495,7 +458,6 @@
         });
 
         document.getElementById('fitBounds').addEventListener('click', () => {
-            // Try to fit to actual campus data if available
             if (osmData.buildings.length > 0) {
                 const allCoords = osmData.buildings.flatMap(b => b.coords);
                 if (allCoords.length > 0) {
@@ -508,51 +470,22 @@
                     return;
                 }
             }
-            
-            // Fallback to default view
+
             map.setView([39.0982, -77.1591], 17);
-            updateStatus('🎯 Centered on default campus location');
-        });
-
-        // Add test button listener with error checking
-        const testButton = document.getElementById('testLoad');
-        if (testButton) {
-            testButton.addEventListener('click', () => {
-                updateStatus('🔧 Running manual test load...');
-                loadOSMFileAndData();
-            });
-        } else {
-            console.error('Test load button not found in DOM');
-        }
-
-        // Auto-load everything when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            updateStatus('Initializing campus map...');
-            // Small delay to ensure everything is initialized
-            setTimeout(() => {
-                loadOSMFileAndData();
-            }, 1000);
-        });
-
-        // Also try loading when window is fully loaded (backup)
-        window.addEventListener('load', function() {
-            // Only try again if we haven't succeeded yet
-            setTimeout(() => {
-                if (osmData.buildings.length === 0 && osmData.amenities.length === 0) {
-                    updateStatus('Retrying campus data load...');
-                    loadOSMFileAndData();
-                }
-            }, 2000);
+            updateStatus('🎯 Centered on campus');
         });
 
         // Add layer control
-        const overlayMaps = {
+        L.control.layers(null, {
             "Buildings": layers.buildings,
             "Amenities": layers.amenities,
             "Parking": layers.parking
-        };
+        }, {position: 'bottomleft'}).addTo(map);
 
-        L.control.layers(null, overlayMaps, {position: 'bottomleft'}).addTo(map);
+        // Start loading when page is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCampusData();
+        });
 
         updateStatus('Initializing campus map...');
     </script>
