@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Montgomery College Campus Map - Simple Version</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 60px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            max-width: 400px;
+        }
+        
+        .controls h3 {
+            margin: 0 0 10px 0;
+            color: #2c5aa0;
+            font-size: 16px;
+        }
+        
+        .file-input {
+            margin: 10px 0;
+        }
+        
+        .file-input input[type="file"] {
+            margin: 5px 0;
+        }
+        
+        .controls button {
+            background: #2c5aa0;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 3px;
+            font-size: 12px;
+        }
+        
+        .controls button:hover {
+            background: #1e3d6f;
+        }
+        
+        .controls button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        
+        .search-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .search-container input {
+            width: 200px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h3>🏫 Montgomery College Campus Map</h3>
+        
+        <div class="file-input">
+            <button id="loadOSMFile">📂 Load Campus Data</button>
+            <span style="font-size: 12px; color: #666;">or</span>
+            <input type="file" id="osmFileUpload" accept=".osm,.xml" style="font-size: 11px;" />
+        </div>
+        
+        <div>
+            <button id="loadBuildings" disabled>🏢 Load Buildings</button>
+            <button id="loadAmenities" disabled>🎯 Load Amenities</button>
+            <button id="loadParking" disabled>🅿️ Load Parking</button>
+        </div>
+        <div>
+            <button id="clearAll">🗑️ Clear All</button>
+            <button id="fitBounds">🎯 Fit to Campus</button>
+            <button id="loadAll" disabled>🚀 Load All Data</button>
+        </div>
+        <div class="status" id="status">
+            Click "📂 Load Campus Data" to load campus.osm automatically
+        </div>
+    </div>
+    
+    <div class="search-container">
+        <input type="text" id="buildingSearch" placeholder="Search buildings..." disabled />
+    </div>
+    
+    <div id="map"></div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    
+    <script>
+        // Initialize map centered on Montgomery College
+        const map = L.map('map').setView([39.0982, -77.1591], 17);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Layer groups for different data types
+        const layers = {
+            buildings: L.layerGroup().addTo(map),
+            amenities: L.layerGroup().addTo(map),
+            parking: L.layerGroup().addTo(map)
+        };
+
+        // Store parsed OSM data
+        let osmData = {
+            nodes: {},
+            buildings: [],
+            amenities: [],
+            parking: []
+        };
+
+        // Store all features for search functionality
+        let allFeatures = [];
+
+        // Update status display
+        function updateStatus(message, isError = false) {
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML += `<div style="color: ${isError ? '#e74c3c' : '#2c5aa0'}; margin: 2px 0;">${message}</div>`;
+            statusEl.scrollTop = statusEl.scrollHeight;
+        }
+
+        // Enable/disable buttons
+        function setButtonsEnabled(enabled) {
+            document.getElementById('loadBuildings').disabled = !enabled;
+            document.getElementById('loadAmenities').disabled = !enabled;
+            document.getElementById('loadParking').disabled = !enabled;
+            document.getElementById('buildingSearch').disabled = !enabled;
+        }
+
+        // Parse OSM XML data
+        function parseOSMData(xmlString) {
+            updateStatus('Parsing OSM file...');
+            
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+                
+                // Check for parsing errors
+                const parserError = xmlDoc.querySelector('parsererror');
+                if (parserError) {
+                    throw new Error('Invalid XML format');
+                }
+
+                // Clear previous data
+                osmData = { nodes: {}, buildings: [], amenities: [], parking: [] };
+
+                // Parse nodes
+                const nodes = xmlDoc.getElementsByTagName('node');
+                updateStatus(`Processing ${nodes.length} nodes...`);
+                
+                for (let node of nodes) {
+                    const id = node.getAttribute('id');
+                    const lat = parseFloat(node.getAttribute('lat'));
+                    const lon = parseFloat(node.getAttribute('lon'));
+                    
+                    osmData.nodes[id] = { lat, lon };
+                    
+                    // Check for amenities in nodes
+                    const tags = extractTags(node);
+                    if (isAmenity(tags)) {
+                        osmData.amenities.push({
+                            id,
+                            lat,
+                            lon,
+                            tags,
+                            type: tags.amenity || tags.shop || tags.tourism || 'unknown'
+                        });
+                    }
+                }
+
+                // Parse ways
+                const ways = xmlDoc.getElementsByTagName('way');
+                updateStatus(`Processing ${ways.length} ways...`);
+                
+                for (let way of ways) {
+                    const id = way.getAttribute('id');
+                    const tags = extractTags(way);
+                    
+                    // Get way coordinates
+                    const nodeRefs = way.getElementsByTagName('nd');
+                    const coords = [];
+                    
+                    for (let ndRef of nodeRefs) {
+                        const nodeId = ndRef.getAttribute('ref');
+                        if (osmData.nodes[nodeId]) {
+                            coords.push([osmData.nodes[nodeId].lat, osmData.nodes[nodeId].lon]);
+                        }
+                    }
+                    
+                    if (coords.length >= 3) {
+                        if (isBuilding(tags)) {
+                            osmData.buildings.push({
+                                id,
+                                tags,
+                                coords,
+                                name: tags.name || tags['addr:housename'] || 'Campus Building',
+                                building_type: tags.building || 'yes'
+                            });
+                        } else if (isParking(tags)) {
+                            osmData.parking.push({
+                                id,
+                                tags,
+                                coords,
+                                parking_type: tags.parking || 'surface',
+                                fee: tags.fee || 'unknown',
+                                capacity: tags.capacity || 'unknown'
+                            });
+                        }
+                    }
+                }
+
+                updateStatus(`✅ Parsed: ${osmData.buildings.length} buildings, ${osmData.amenities.length} amenities, ${osmData.parking.length} parking areas`);
+                setButtonsEnabled(true);
+                
+                // Auto-center map on first building if available
+                if (osmData.buildings.length > 0) {
+                    const firstBuilding = osmData.buildings[0];
+                    if (firstBuilding.coords.length > 0) {
+                        map.setView([firstBuilding.coords[0][0], firstBuilding.coords[0][1]], 17);
+                        updateStatus('🎯 Map centered on campus buildings');
+                    }
+                }
+                
+            } catch (error) {
+                updateStatus(`❌ Error parsing OSM file: ${error.message}`, true);
+            }
+        }
+
+        // Extract tags from XML element
+        function extractTags(element) {
+            const tags = {};
+            const tagElements = element.getElementsByTagName('tag');
+            
+            for (let tag of tagElements) {
+                const key = tag.getAttribute('k');
+                const value = tag.getAttribute('v');
+                if (key && value) {
+                    tags[key] = value;
+                }
+            }
+            return tags;
+        }
+
+        // Check if tags indicate a building
+        function isBuilding(tags) {
+            return tags.building && tags.building !== 'no' && tags.building !== 'false';
+        }
+
+        // Check if tags indicate an amenity
+        function isAmenity(tags) {
+            return tags.amenity || tags.shop || tags.tourism;
+        }
+
+        // Check if tags indicate parking
+        function isParking(tags) {
+            return tags.amenity === 'parking' || tags.parking;
+        }
+
+        // Load buildings onto map
+        function loadBuildings() {
+            layers.buildings.clearLayers();
+            allFeatures = allFeatures.filter(f => f.type !== 'building');
+            
+            updateStatus(`Loading ${osmData.buildings.length} buildings...`);
+            
+            osmData.buildings.forEach(building => {
+                if (building.coords.length >= 3) {
+                    // Close polygon if needed
+                    const coords = [...building.coords];
+                    if (coords[0][0] !== coords[coords.length-1][0] || coords[0][1] !== coords[coords.length-1][1]) {
+                        coords.push(coords[0]);
+                    }
+                    
+                    const polygon = L.polygon(coords, {
+                        color: '#2c5aa0',
+                        fillColor: '#3498db',
+                        fillOpacity: 0.6,
+                        weight: 2
+                    });
+
+                    const popupContent = `
+                        <div>
+                            <h4>${building.name}</h4>
+                            <p><strong>Type:</strong> ${building.building_type}</p>
+                            ${building.tags.levels ? `<p><strong>Levels:</strong> ${building.tags.levels}</p>` : ''}
+                            ${building.tags.wheelchair ? `<p><strong>Wheelchair Access:</strong> ${building.tags.wheelchair}</p>` : ''}
+                            <p><strong>Source:</strong> Your OSM File</p>
+                        </div>
+                    `;
+                    
+                    polygon.bindPopup(popupContent);
+                    layers.buildings.addLayer(polygon);
+                    
+                    // Add to search
+                    allFeatures.push({
+                        layer: polygon,
+                        name: building.name,
+                        type: 'building',
+                        searchTerms: [building.name, building.building_type]
+                    });
+                }
+            });
+            
+            updateStatus(`✅ Loaded ${osmData.buildings.length} buildings`);
+        }
+
+        // Load amenities onto map
+        function loadAmenities() {
+            layers.amenities.clearLayers();
+            allFeatures = allFeatures.filter(f => f.type !== 'amenity');
+            
+            updateStatus(`Loading ${osmData.amenities.length} amenities...`);
+            
+            osmData.amenities.forEach(amenity => {
+                // Choose icon
+                let icon = '📍';
+                const type = amenity.type;
+                if (type.includes('food') || type === 'restaurant' || type === 'cafe') icon = '🍽️';
+                else if (type === 'library') icon = '📚';
+                else if (type === 'atm' || type === 'bank') icon = '🏧';
+                else if (type === 'parking') icon = '🅿️';
+                else if (type === 'toilets') icon = '🚻';
+                else if (type === 'pharmacy') icon = '💊';
+                else if (type.includes('shop')) icon = '🛒';
+
+                const marker = L.marker([amenity.lat, amenity.lon], {
+                    icon: L.divIcon({
+                        className: 'amenity-marker',
+                        html: `<div style="background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid #e74c3c; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 16px;">${icon}</div>`,
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    })
+                });
+
+                const popupContent = `
+                    <div>
+                        <h4>${amenity.tags.name || amenity.type.toUpperCase()}</h4>
+                        <p><strong>Type:</strong> ${amenity.type}</p>
+                        ${amenity.tags.opening_hours ? `<p><strong>Hours:</strong> ${amenity.tags.opening_hours}</p>` : ''}
+                        <p><strong>Source:</strong> Your OSM File</p>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                layers.amenities.addLayer(marker);
+                
+                allFeatures.push({
+                    layer: marker,
+                    name: amenity.tags.name || amenity.type,
+                    type: 'amenity',
+                    searchTerms: [amenity.tags.name || amenity.type, amenity.type]
+                });
+            });
+            
+            updateStatus(`✅ Loaded ${osmData.amenities.length} amenities`);
+        }
+
+        // Load parking onto map
+        function loadParking() {
+            layers.parking.clearLayers();
+            
+            updateStatus(`Loading ${osmData.parking.length} parking areas...`);
+            
+            osmData.parking.forEach(parking => {
+                if (parking.coords.length >= 3) {
+                    const coords = [...parking.coords];
+                    if (coords[0][0] !== coords[coords.length-1][0] || coords[0][1] !== coords[coords.length-1][1]) {
+                        coords.push(coords[0]);
+                    }
+                    
+                    const polygon = L.polygon(coords, {
+                        color: '#9b59b6',
+                        fillColor: '#e67e22',
+                        fillOpacity: 0.5,
+                        weight: 2
+                    });
+
+                    const popupContent = `
+                        <div>
+                            <h4>🅿️ Parking Area</h4>
+                            <p><strong>Type:</strong> ${parking.parking_type}</p>
+                            <p><strong>Fee:</strong> ${parking.fee}</p>
+                            ${parking.capacity !== 'unknown' ? `<p><strong>Capacity:</strong> ${parking.capacity} spaces</p>` : ''}
+                            <p><strong>Source:</strong> Your OSM File</p>
+                        </div>
+                    `;
+                    
+                    polygon.bindPopup(popupContent);
+                    layers.parking.addLayer(polygon);
+                }
+            });
+            
+            updateStatus(`✅ Loaded ${osmData.parking.length} parking areas`);
+        }
+
+        // Search functionality
+        const searchInput = document.getElementById('buildingSearch');
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            
+            if (searchTerm.length < 2) return;
+
+            const matches = allFeatures.filter(feature => 
+                feature.searchTerms.some(term => 
+                    term.toLowerCase().includes(searchTerm)
+                )
+            );
+
+            if (matches.length > 0) {
+                const feature = matches[0];
+                
+                if (feature.layer.getLatLng) {
+                    map.setView(feature.layer.getLatLng(), 18);
+                } else if (feature.layer.getBounds) {
+                    map.fitBounds(feature.layer.getBounds());
+                }
+                
+                feature.layer.openPopup();
+            }
+        });
+
+        // Load OSM file automatically from same directory
+        async function loadOSMFile() {
+            updateStatus('Loading campus.osm file...');
+            
+            try {
+                const response = await fetch('./campus.osm');
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load campus.osm (${response.status}). Make sure campus.osm is in the same folder as this HTML file.`);
+                }
+                
+                const xmlString = await response.text();
+                updateStatus('✅ Campus.osm loaded successfully');
+                parseOSMData(xmlString);
+                
+            } catch (error) {
+                updateStatus(`❌ Could not load campus.osm automatically: ${error.message}`, true);
+                updateStatus('💡 Use the file upload option instead, or make sure campus.osm is in the same directory', false);
+            }
+        }
+
+        // Load all data at once
+        function loadAllData() {
+            updateStatus('🚀 Loading all campus data...');
+            loadBuildings();
+            setTimeout(() => loadAmenities(), 500);
+            setTimeout(() => loadParking(), 1000);
+            updateStatus('✅ All campus data loaded!');
+        }
+
+        // File input handler (for manual upload)
+        document.getElementById('osmFileUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            updateStatus(`Reading uploaded file: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                parseOSMData(e.target.result);
+            };
+            reader.onerror = function() {
+                updateStatus('❌ Error reading uploaded file', true);
+            };
+            reader.readAsText(file);
+        });
+
+        // Button event listeners
+        document.getElementById('loadOSMFile').addEventListener('click', loadOSMFile);
+        document.getElementById('loadBuildings').addEventListener('click', loadBuildings);
+        document.getElementById('loadAmenities').addEventListener('click', loadAmenities);
+        document.getElementById('loadParking').addEventListener('click', loadParking);
+        document.getElementById('loadAll').addEventListener('click', loadAllData);
+
+        document.getElementById('clearAll').addEventListener('click', () => {
+            Object.values(layers).forEach(layer => layer.clearLayers());
+            allFeatures = [];
+            updateStatus('🗑️ Cleared all data');
+        });
+
+        document.getElementById('fitBounds').addEventListener('click', () => {
+            // Try to fit to actual campus data if available
+            if (osmData.buildings.length > 0) {
+                const allCoords = osmData.buildings.flatMap(b => b.coords);
+                if (allCoords.length > 0) {
+                    const group = L.featureGroup();
+                    allCoords.forEach(coord => {
+                        L.marker(coord).addTo(group);
+                    });
+                    map.fitBounds(group.getBounds(), { padding: [20, 20] });
+                    updateStatus('🎯 Fitted to campus boundaries');
+                    return;
+                }
+            }
+            
+            // Fallback to default view
+            map.setView([39.0982, -77.1591], 17);
+            updateStatus('🎯 Centered on default campus location');
+        });
+
+        // Add layer control
+        const overlayMaps = {
+            "Buildings": layers.buildings,
+            "Amenities": layers.amenities,
+            "Parking": layers.parking
+        };
+
+        L.control.layers(null, overlayMaps, {position: 'bottomleft'}).addTo(map);
+
+        updateStatus('Ready! Click "📂 Load Campus Data" to automatically load campus.osm from the same directory.');
+    </script>
+</body>
+</html>
