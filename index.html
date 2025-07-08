@@ -97,24 +97,12 @@
     <div class="controls">
         <h3>🏫 Montgomery College Campus Map</h3>
         
-        <div class="file-input">
-            <button id="loadOSMFile">📂 Load Campus Data</button>
-            <span style="font-size: 12px; color: #666;">or</span>
-            <input type="file" id="osmFileUpload" accept=".osm,.xml" style="font-size: 11px;" />
-        </div>
-        
-        <div>
-            <button id="loadBuildings" disabled>🏢 Load Buildings</button>
-            <button id="loadAmenities" disabled>🎯 Load Amenities</button>
-            <button id="loadParking" disabled>🅿️ Load Parking</button>
-        </div>
         <div>
             <button id="clearAll">🗑️ Clear All</button>
             <button id="fitBounds">🎯 Fit to Campus</button>
-            <button id="loadAll" disabled>🚀 Load All Data</button>
         </div>
         <div class="status" id="status">
-            Click "📂 Load Campus Data" to load campus.osm automatically
+            Loading campus data...
         </div>
     </div>
     
@@ -255,15 +243,6 @@
                 updateStatus(`✅ Parsed: ${osmData.buildings.length} buildings, ${osmData.amenities.length} amenities, ${osmData.parking.length} parking areas`);
                 setButtonsEnabled(true);
                 
-                // Auto-center map on first building if available
-                if (osmData.buildings.length > 0) {
-                    const firstBuilding = osmData.buildings[0];
-                    if (firstBuilding.coords.length > 0) {
-                        map.setView([firstBuilding.coords[0][0], firstBuilding.coords[0][1]], 17);
-                        updateStatus('🎯 Map centered on campus buildings');
-                    }
-                }
-                
             } catch (error) {
                 updateStatus(`❌ Error parsing OSM file: ${error.message}`, true);
             }
@@ -304,8 +283,6 @@
             layers.buildings.clearLayers();
             allFeatures = allFeatures.filter(f => f.type !== 'building');
             
-            updateStatus(`Loading ${osmData.buildings.length} buildings...`);
-            
             osmData.buildings.forEach(building => {
                 if (building.coords.length >= 3) {
                     // Close polygon if needed
@@ -327,7 +304,7 @@
                             <p><strong>Type:</strong> ${building.building_type}</p>
                             ${building.tags.levels ? `<p><strong>Levels:</strong> ${building.tags.levels}</p>` : ''}
                             ${building.tags.wheelchair ? `<p><strong>Wheelchair Access:</strong> ${building.tags.wheelchair}</p>` : ''}
-                            <p><strong>Source:</strong> Your OSM File</p>
+                            <p><strong>Source:</strong> Campus OSM Data</p>
                         </div>
                     `;
                     
@@ -343,16 +320,12 @@
                     });
                 }
             });
-            
-            updateStatus(`✅ Loaded ${osmData.buildings.length} buildings`);
         }
 
         // Load amenities onto map
         function loadAmenities() {
             layers.amenities.clearLayers();
             allFeatures = allFeatures.filter(f => f.type !== 'amenity');
-            
-            updateStatus(`Loading ${osmData.amenities.length} amenities...`);
             
             osmData.amenities.forEach(amenity => {
                 // Choose icon
@@ -380,7 +353,7 @@
                         <h4>${amenity.tags.name || amenity.type.toUpperCase()}</h4>
                         <p><strong>Type:</strong> ${amenity.type}</p>
                         ${amenity.tags.opening_hours ? `<p><strong>Hours:</strong> ${amenity.tags.opening_hours}</p>` : ''}
-                        <p><strong>Source:</strong> Your OSM File</p>
+                        <p><strong>Source:</strong> Campus OSM Data</p>
                     </div>
                 `;
                 
@@ -394,15 +367,11 @@
                     searchTerms: [amenity.tags.name || amenity.type, amenity.type]
                 });
             });
-            
-            updateStatus(`✅ Loaded ${osmData.amenities.length} amenities`);
         }
 
         // Load parking onto map
         function loadParking() {
             layers.parking.clearLayers();
-            
-            updateStatus(`Loading ${osmData.parking.length} parking areas...`);
             
             osmData.parking.forEach(parking => {
                 if (parking.coords.length >= 3) {
@@ -424,7 +393,7 @@
                             <p><strong>Type:</strong> ${parking.parking_type}</p>
                             <p><strong>Fee:</strong> ${parking.fee}</p>
                             ${parking.capacity !== 'unknown' ? `<p><strong>Capacity:</strong> ${parking.capacity} spaces</p>` : ''}
-                            <p><strong>Source:</strong> Your OSM File</p>
+                            <p><strong>Source:</strong> Campus OSM Data</p>
                         </div>
                     `;
                     
@@ -433,7 +402,15 @@
                 }
             });
             
-            updateStatus(`✅ Loaded ${osmData.parking.length} parking areas`);
+            // Auto-center map after all data is loaded
+            setTimeout(() => {
+                if (osmData.buildings.length > 0) {
+                    const firstBuilding = osmData.buildings[0];
+                    if (firstBuilding.coords.length > 0) {
+                        map.setView([firstBuilding.coords[0][0], firstBuilding.coords[0][1]], 17);
+                    }
+                }
+            }, 100);
         }
 
         // Search functionality
@@ -510,12 +487,6 @@
         });
 
         // Button event listeners
-        document.getElementById('loadOSMFile').addEventListener('click', loadOSMFile);
-        document.getElementById('loadBuildings').addEventListener('click', loadBuildings);
-        document.getElementById('loadAmenities').addEventListener('click', loadAmenities);
-        document.getElementById('loadParking').addEventListener('click', loadParking);
-        document.getElementById('loadAll').addEventListener('click', loadAllData);
-
         document.getElementById('clearAll').addEventListener('click', () => {
             Object.values(layers).forEach(layer => layer.clearLayers());
             allFeatures = [];
@@ -542,6 +513,14 @@
             updateStatus('🎯 Centered on default campus location');
         });
 
+        // Auto-load everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Small delay to ensure everything is initialized
+            setTimeout(() => {
+                loadOSMFileAndData();
+            }, 500);
+        });
+
         // Add layer control
         const overlayMaps = {
             "Buildings": layers.buildings,
@@ -551,7 +530,7 @@
 
         L.control.layers(null, overlayMaps, {position: 'bottomleft'}).addTo(map);
 
-        updateStatus('Ready! Click "📂 Load Campus Data" to automatically load campus.osm from the same directory.');
+        updateStatus('Initializing campus map...');
     </script>
 </body>
 </html>
