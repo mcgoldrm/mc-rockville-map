@@ -9,95 +9,498 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
-        }
-
-        #map {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            display: flex;
             height: 100vh;
-            width: 100%;
+            overflow: hidden;
         }
 
-        .controls {
-            position: absolute;
-            top: 10px;
-            left: 60px;
+        /* Side Panel */
+        .side-panel {
+            width: 340px;
+            height: 100vh;
+            background: #fff;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
             z-index: 1000;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            max-width: 300px;
+            transition: transform 0.3s ease;
         }
 
-        .controls h3 {
-            margin: 0 0 10px 0;
-            color: #2c5aa0;
-            font-size: 16px;
+        .side-panel.collapsed {
+            transform: translateX(-100%);
         }
 
-        .controls button {
-            background: #2c5aa0;
+        .panel-header {
+            background: #51237f;
             color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
+            padding: 20px;
+            flex-shrink: 0;
+        }
+
+        .panel-header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .panel-header .logo {
+            height: 40px;
+            width: auto;
+        }
+
+        .panel-header .subtitle {
+            margin: 5px 0 0 0;
+            font-size: 12px;
+            opacity: 0.85;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        /* Sections */
+        .panel-section {
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .section-header {
+            padding: 14px 20px;
+            background: #f8f9fa;
+            font-size: 13px;
+            font-weight: 600;
+            color: #495057;
             cursor: pointer;
-            margin: 3px;
-            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
         }
 
-        .controls button:hover {
-            background: #1e3d6f;
+        .section-header:hover {
+            background: #e9ecef;
         }
 
-        .status {
-            margin-top: 10px;
+        .section-header .toggle-icon {
+            transition: transform 0.2s;
+        }
+
+        .section-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            padding: 16px 20px;
+        }
+
+        .section-content.collapsed {
+            display: none;
+        }
+
+        /* Search */
+        .search-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #51237f;
+            box-shadow: 0 0 0 3px rgba(81, 35, 127, 0.1);
+        }
+
+        /* Directions */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
             font-size: 12px;
-            color: #666;
-            max-height: 100px;
+            font-weight: 500;
+            color: #6c757d;
+            margin-bottom: 6px;
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .form-group select:focus {
+            outline: none;
+            border-color: #51237f;
+        }
+
+        .swap-btn {
+            width: 100%;
+            padding: 8px;
+            border: 1px dashed #dee2e6;
+            border-radius: 6px;
+            background: transparent;
+            color: #6c757d;
+            font-size: 13px;
+            cursor: pointer;
+            margin-bottom: 14px;
+            transition: all 0.2s;
+        }
+
+        .swap-btn:hover {
+            background: #f8f9fa;
+            border-color: #adb5bd;
+            color: #495057;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #51237f;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #3d1a5f;
+        }
+
+        .btn-secondary {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .btn-secondary:hover {
+            background: #dee2e6;
+        }
+
+        /* Route Info */
+        .route-info {
+            margin-top: 16px;
+            padding: 14px;
+            background: rgba(0, 149, 200, 0.1);
+            border-radius: 8px;
+            display: none;
+            border-left: 3px solid #0095C8;
+        }
+
+        .route-info.visible {
+            display: block;
+        }
+
+        .route-info .route-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(81, 35, 127, 0.1);
+        }
+
+        .route-info .route-stat:last-child {
+            border-bottom: none;
+        }
+
+        .route-info .stat-label {
+            color: #6c757d;
+        }
+
+        .route-info .stat-value {
+            color: #51237f;
+            font-weight: 600;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .quick-btn {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .quick-btn:hover {
+            background: #f8f9fa;
+            border-color: #51237f;
+        }
+
+        .quick-btn .icon {
+            display: block;
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        /* Status */
+        .status-container {
+            padding: 16px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            flex-shrink: 0;
+            max-height: 120px;
             overflow-y: auto;
         }
 
-        .search-container {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        .status-container .status-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
         }
 
-        .search-container input {
-            width: 200px;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        .status-log {
+            font-size: 11px;
+            color: #495057;
+            line-height: 1.5;
+        }
+
+        .status-log div {
+            padding: 2px 0;
+        }
+
+        /* Map Container */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        /* Mobile Toggle Button */
+        .panel-toggle {
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1001;
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            cursor: pointer;
+            font-size: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .panel-toggle:hover {
+            background: #f8f9fa;
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            .side-panel {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                max-width: 340px;
+                box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+            }
+
+            .side-panel.collapsed {
+                transform: translateX(-100%);
+            }
+
+            .panel-toggle {
+                display: flex;
+            }
+
+            .side-panel:not(.collapsed) + .map-container .panel-toggle {
+                left: 350px;
+            }
+
+            .map-container {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .side-panel {
+                max-width: 100%;
+            }
+
+            .side-panel:not(.collapsed) + .map-container .panel-toggle {
+                display: none;
+            }
+        }
+
+        /* Overlay for mobile */
+        .panel-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 999;
+        }
+
+        @media (max-width: 768px) {
+            .panel-overlay.visible {
+                display: block;
+            }
+        }
+
+        /* Leaflet control adjustments */
+        .leaflet-top.leaflet-left {
+            top: 60px;
+        }
+
+        @media (min-width: 769px) {
+            .leaflet-top.leaflet-left {
+                top: 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <h3>🏫 Montgomery College Campus Map</h3>
-
-        <div>
-            <button id="clearAll">🗑️ Clear All</button>
-            <button id="fitBounds">🎯 Fit to Campus</button>
+    <!-- Side Panel -->
+    <aside class="side-panel" id="sidePanel">
+        <div class="panel-header">
+            <h1>
+                <img src="https://media.montgomerycollege.edu/communications/marketing-communications-website/mclogos/assets/MClogo-stacked-white-no-background.png" alt="Montgomery College Logo" class="logo">
+                Rockville Campus Map
+            </h1>
+            <p class="subtitle">Montgomery College Campus Navigation</p>
         </div>
-        <div class="status" id="status">
-            Loading campus data...
+
+        <div class="panel-content">
+            <!-- Search Section -->
+            <div class="panel-section">
+                <div class="section-header" data-section="search">
+                    <span>🔍 Search</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="section-content" id="searchSection">
+                    <input type="text" id="buildingSearch" class="search-input" placeholder="Search buildings, amenities..." />
+                </div>
+            </div>
+
+            <!-- Directions Section -->
+            <div class="panel-section">
+                <div class="section-header" data-section="directions">
+                    <span>🧭 Get Directions</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="section-content" id="directionsSection">
+                    <div class="form-group">
+                        <label for="fromLocation">From</label>
+                        <select id="fromLocation">
+                            <option value="">Select starting point...</option>
+                        </select>
+                    </div>
+
+                    <button class="swap-btn" id="swapLocations">⇅ Swap locations</button>
+
+                    <div class="form-group">
+                        <label for="toLocation">To</label>
+                        <select id="toLocation">
+                            <option value="">Select destination...</option>
+                        </select>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="getDirections">Get Route</button>
+                        <button class="btn btn-secondary" id="clearRoute">Clear</button>
+                    </div>
+
+                    <div class="route-info" id="routeInfo">
+                        <div class="route-stat">
+                            <span class="stat-label">Distance</span>
+                            <span class="stat-value" id="routeDistance">--</span>
+                        </div>
+                        <div class="route-stat">
+                            <span class="stat-label">Walking Time</span>
+                            <span class="stat-value" id="routeTime">--</span>
+                        </div>
+                        <div class="route-stat">
+                            <span class="stat-label">From</span>
+                            <span class="stat-value" id="routeFrom">--</span>
+                        </div>
+                        <div class="route-stat">
+                            <span class="stat-label">To</span>
+                            <span class="stat-value" id="routeTo">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions Section -->
+            <div class="panel-section">
+                <div class="section-header" data-section="actions">
+                    <span>⚡ Quick Actions</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="section-content" id="actionsSection">
+                    <div class="quick-actions">
+                        <button class="quick-btn" id="fitBounds">
+                            <span class="icon">🎯</span>
+                            Fit Campus
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <div class="search-container">
-        <input type="text" id="buildingSearch" placeholder="Search buildings..." />
-    </div>
+        <!-- Hidden status for internal use -->
+        <div id="status" style="display: none;"></div>
+    </aside>
 
-    <div id="map"></div>
+    <!-- Map Container -->
+    <div class="map-container">
+        <button class="panel-toggle" id="panelToggle" title="Toggle menu">☰</button>
+        <div class="panel-overlay" id="panelOverlay"></div>
+        <div id="map"></div>
+    </div>
 
     <!-- Leaflet JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -124,17 +527,28 @@
             nodes: {},
             buildings: [],
             amenities: [],
-            parking: []
+            parking: [],
+            walkways: []  // footways, paths, steps for routing
+        };
+
+        // Path graph for routing
+        let pathGraph = {
+            nodes: {},      // nodeId -> {lat, lon, neighbors: [{nodeId, distance}]}
+            nodeIndex: []   // Array of nodeIds for spatial queries
         };
 
         // Store all features for search functionality
         let allFeatures = [];
 
-        // Update status display
+        // Update status display (hidden from user but used for internal logging)
         function updateStatus(message, isError = false) {
             const statusEl = document.getElementById('status');
-            statusEl.innerHTML += `<div style="color: ${isError ? '#e74c3c' : '#2c5aa0'}; margin: 2px 0;">${message}</div>`;
-            statusEl.scrollTop = statusEl.scrollHeight;
+            if (statusEl) {
+                statusEl.innerHTML += `<div style="color: ${isError ? '#e74c3c' : '#51237f'}; margin: 2px 0;">${message}</div>`;
+                statusEl.scrollTop = statusEl.scrollHeight;
+            }
+            // Also log to console for debugging
+            console.log(isError ? `[ERROR] ${message}` : `[Status] ${message}`);
         }
 
         // Parse OSM XML data
@@ -152,7 +566,8 @@
                 }
 
                 // Clear previous data
-                osmData = { nodes: {}, buildings: [], amenities: [], parking: [] };
+                osmData = { nodes: {}, buildings: [], amenities: [], parking: [], walkways: [], entrances: [], greenSpaces: [] };
+                pathGraph = { nodes: {}, nodeIndex: [] };
 
                 // Parse nodes
                 const nodes = xmlDoc.getElementsByTagName('node');
@@ -176,6 +591,18 @@
                             type: tags.amenity || tags.shop || tags.tourism || 'unknown'
                         });
                     }
+
+                    // Check for building entrances
+                    if (tags.entrance) {
+                        osmData.entrances.push({
+                            id,
+                            lat,
+                            lon,
+                            tags,
+                            entranceType: tags.entrance, // 'main', 'secondary', 'staircase', 'yes', etc.
+                            buildingId: null // Will be associated with nearest building later
+                        });
+                    }
                 }
 
                 // Parse ways
@@ -186,15 +613,28 @@
                     const id = way.getAttribute('id');
                     const tags = extractTags(way);
 
-                    // Get way coordinates
+                    // Get way coordinates and node IDs
                     const nodeRefs = way.getElementsByTagName('nd');
                     const coords = [];
+                    const nodeIds = [];
 
                     for (let ndRef of nodeRefs) {
                         const nodeId = ndRef.getAttribute('ref');
                         if (osmData.nodes[nodeId]) {
                             coords.push([osmData.nodes[nodeId].lat, osmData.nodes[nodeId].lon]);
+                            nodeIds.push(nodeId);
                         }
+                    }
+
+                    // Check for walkways (need at least 2 points for a path)
+                    if (coords.length >= 2 && isWalkway(tags)) {
+                        osmData.walkways.push({
+                            id,
+                            tags,
+                            coords,
+                            nodeIds,
+                            type: tags.highway
+                        });
                     }
 
                     if (coords.length >= 3) {
@@ -215,11 +655,26 @@
                                 fee: tags.fee || 'unknown',
                                 capacity: tags.capacity || 'unknown'
                             });
+                        } else if (isGreenSpace(tags)) {
+                            // Green spaces (quads, lawns, parks) are traversable
+                            osmData.greenSpaces.push({
+                                id,
+                                tags,
+                                coords,
+                                name: tags.name || 'Green Space',
+                                type: tags.landuse || tags.leisure || 'grass'
+                            });
                         }
                     }
                 }
 
-                updateStatus(`✅ Parsed: ${osmData.buildings.length} buildings, ${osmData.amenities.length} amenities, ${osmData.parking.length} parking areas`);
+                updateStatus(`✅ Parsed: ${osmData.buildings.length} buildings, ${osmData.amenities.length} amenities, ${osmData.parking.length} parking areas, ${osmData.walkways.length} walkways, ${osmData.entrances.length} entrances, ${osmData.greenSpaces.length} green spaces`);
+
+                // Associate entrances with their nearest buildings
+                associateEntrancesWithBuildings();
+
+                // Build path graph for routing
+                buildPathGraph();
 
                 // Auto-load all data after parsing
                 setTimeout(() => loadBuildings(), 500);
@@ -262,6 +717,664 @@
             return tags.amenity === 'parking' || tags.parking;
         }
 
+        // Check if tags indicate a walkable path
+        function isWalkway(tags) {
+            const walkableHighways = ['footway', 'path', 'pedestrian', 'steps', 'corridor', 'cycleway', 'service', 'residential', 'tertiary', 'unclassified'];
+            return tags.highway && walkableHighways.includes(tags.highway);
+        }
+
+        // Check if tags indicate a green space (traversable area like quads, lawns)
+        function isGreenSpace(tags) {
+            const greenTypes = ['grass', 'meadow', 'village_green', 'recreation_ground'];
+            const leisureTypes = ['park', 'garden', 'pitch', 'common'];
+            return (tags.landuse && greenTypes.includes(tags.landuse)) ||
+                   (tags.leisure && leisureTypes.includes(tags.leisure));
+        }
+
+        // Check if a line segment intersects with a building (but not green spaces)
+        function lineIntersectsBuilding(lat1, lon1, lat2, lon2) {
+            // Check against all buildings
+            for (const building of osmData.buildings) {
+                if (lineIntersectsPolygon(lat1, lon1, lat2, lon2, building.coords)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Check if a line segment intersects with a polygon
+        function lineIntersectsPolygon(lat1, lon1, lat2, lon2, polygon) {
+            // First check if either endpoint is inside the polygon
+            if (pointInPolygon(lat1, lon1, polygon) || pointInPolygon(lat2, lon2, polygon)) {
+                return true;
+            }
+
+            // Then check if the line intersects any edge of the polygon
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const p1 = polygon[i];
+                const p2 = polygon[j];
+
+                if (linesIntersect(lat1, lon1, lat2, lon2, p1[0], p1[1], p2[0], p2[1])) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Check if two line segments intersect
+        function linesIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+            const denom = ((y4 - y3) * (x2 - x1)) - ((x4 - x3) * (y2 - y1));
+            if (Math.abs(denom) < 1e-10) return false; // Lines are parallel
+
+            const ua = (((x4 - x3) * (y1 - y3)) - ((y4 - y3) * (x1 - x3))) / denom;
+            const ub = (((x2 - x1) * (y1 - y3)) - ((y2 - y1) * (x1 - x3))) / denom;
+
+            return ua > 0 && ua < 1 && ub > 0 && ub < 1;
+        }
+
+        // Check if a point is inside any green space
+        function isInGreenSpace(lat, lon) {
+            for (const greenSpace of osmData.greenSpaces) {
+                if (pointInPolygon(lat, lon, greenSpace.coords)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Check if a line only passes through green spaces (not buildings)
+        function lineOnlyThroughGreenSpace(lat1, lon1, lat2, lon2) {
+            // If the line intersects any building, it's not valid
+            if (lineIntersectsBuilding(lat1, lon1, lat2, lon2)) {
+                return false;
+            }
+            return true;
+        }
+
+        // Check if a point is inside a polygon (ray casting algorithm)
+        function pointInPolygon(lat, lon, polygon) {
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i][0], yi = polygon[i][1];
+                const xj = polygon[j][0], yj = polygon[j][1];
+
+                if (((yi > lon) !== (yj > lon)) && (lat < (xj - xi) * (lon - yi) / (yj - yi) + xi)) {
+                    inside = !inside;
+                }
+            }
+            return inside;
+        }
+
+        // Associate entrances with their nearest buildings
+        function associateEntrancesWithBuildings() {
+            updateStatus('Associating entrances with buildings...');
+
+            osmData.entrances.forEach(entrance => {
+                let nearestBuilding = null;
+                let minDistance = Infinity;
+
+                osmData.buildings.forEach(building => {
+                    // First check if entrance is inside or on the building polygon
+                    if (pointInPolygon(entrance.lat, entrance.lon, building.coords)) {
+                        entrance.buildingId = building.id;
+                        entrance.buildingName = building.name;
+                        nearestBuilding = building;
+                        minDistance = 0;
+                        return;
+                    }
+
+                    // Otherwise find the nearest building within 30 meters
+                    const centroid = getPolygonCentroid(building.coords);
+                    const distance = calculateDistance(entrance.lat, entrance.lon, centroid[0], centroid[1]);
+
+                    // Also check distance to building edges
+                    let minEdgeDistance = Infinity;
+                    for (let i = 0; i < building.coords.length; i++) {
+                        const edgeDistance = calculateDistance(entrance.lat, entrance.lon, building.coords[i][0], building.coords[i][1]);
+                        minEdgeDistance = Math.min(minEdgeDistance, edgeDistance);
+                    }
+
+                    const effectiveDistance = Math.min(distance, minEdgeDistance);
+
+                    if (effectiveDistance < minDistance && effectiveDistance < 30) {
+                        minDistance = effectiveDistance;
+                        nearestBuilding = building;
+                    }
+                });
+
+                if (nearestBuilding) {
+                    entrance.buildingId = nearestBuilding.id;
+                    entrance.buildingName = nearestBuilding.name;
+
+                    // Add entrance to the building's entrances array
+                    if (!nearestBuilding.entrances) {
+                        nearestBuilding.entrances = [];
+                    }
+                    nearestBuilding.entrances.push(entrance);
+                }
+            });
+
+            // Count buildings with entrances
+            const buildingsWithEntrances = osmData.buildings.filter(b => b.entrances && b.entrances.length > 0).length;
+            updateStatus(`✅ Associated entrances: ${buildingsWithEntrances} buildings have defined entrances`);
+        }
+
+        // Get all entrances for a building, prioritizing main entrances
+        function getBuildingEntrances(buildingId) {
+            const building = osmData.buildings.find(b => b.id === buildingId);
+            if (!building || !building.entrances || building.entrances.length === 0) {
+                return null;
+            }
+
+            // Sort entrances: main first, then secondary, then others
+            const sorted = [...building.entrances].sort((a, b) => {
+                const priority = { 'main': 0, 'yes': 1, 'secondary': 2, 'staircase': 3 };
+                const aPriority = priority[a.entranceType] !== undefined ? priority[a.entranceType] : 4;
+                const bPriority = priority[b.entranceType] !== undefined ? priority[b.entranceType] : 4;
+                return aPriority - bPriority;
+            });
+
+            return sorted;
+        }
+
+        // Find the best entrance pair for routing between two buildings
+        function findBestEntrancePair(fromBuildingId, toBuildingId, fromCentroid, toCentroid) {
+            const fromEntrances = getBuildingEntrances(fromBuildingId);
+            const toEntrances = getBuildingEntrances(toBuildingId);
+
+            // If no entrances defined, return null to use centroids
+            if (!fromEntrances && !toEntrances) {
+                return null;
+            }
+
+            let bestPair = {
+                from: fromEntrances ? fromEntrances[0] : { lat: fromCentroid[0], lon: fromCentroid[1] },
+                to: toEntrances ? toEntrances[0] : { lat: toCentroid[0], lon: toCentroid[1] },
+                distance: Infinity
+            };
+
+            // Get candidate start points (entrances or centroid)
+            const startPoints = fromEntrances ? fromEntrances : [{ lat: fromCentroid[0], lon: fromCentroid[1] }];
+            const endPoints = toEntrances ? toEntrances : [{ lat: toCentroid[0], lon: toCentroid[1] }];
+
+            // Find the pair with shortest path
+            for (const startPoint of startPoints) {
+                for (const endPoint of endPoints) {
+                    // Try to find path via walkways
+                    const pathResult = findPath(startPoint.lat, startPoint.lon, endPoint.lat, endPoint.lon);
+
+                    if (pathResult) {
+                        if (pathResult.distance < bestPair.distance) {
+                            bestPair = {
+                                from: startPoint,
+                                to: endPoint,
+                                distance: pathResult.distance,
+                                path: pathResult.path
+                            };
+                        }
+                    } else {
+                        // Fall back to straight line distance
+                        const directDistance = calculateDistance(startPoint.lat, startPoint.lon, endPoint.lat, endPoint.lon);
+                        if (directDistance < bestPair.distance) {
+                            bestPair = {
+                                from: startPoint,
+                                to: endPoint,
+                                distance: directDistance,
+                                path: null
+                            };
+                        }
+                    }
+                }
+            }
+
+            return bestPair;
+        }
+
+        // Build path graph from walkways for routing
+        function buildPathGraph() {
+            updateStatus('Building path graph for routing...');
+            pathGraph = { nodes: {}, nodeIndex: [] };
+
+            // Add all walkway nodes and edges to the graph
+            osmData.walkways.forEach(walkway => {
+                for (let i = 0; i < walkway.nodeIds.length; i++) {
+                    const nodeId = walkway.nodeIds[i];
+                    const nodeData = osmData.nodes[nodeId];
+
+                    if (!nodeData) continue;
+
+                    // Initialize node in graph if not exists
+                    if (!pathGraph.nodes[nodeId]) {
+                        pathGraph.nodes[nodeId] = {
+                            lat: nodeData.lat,
+                            lon: nodeData.lon,
+                            neighbors: []
+                        };
+                        pathGraph.nodeIndex.push(nodeId);
+                    }
+
+                    // Connect to previous node in the walkway
+                    if (i > 0) {
+                        const prevNodeId = walkway.nodeIds[i - 1];
+                        const prevNode = osmData.nodes[prevNodeId];
+
+                        if (prevNode) {
+                            const distance = calculateDistance(
+                                nodeData.lat, nodeData.lon,
+                                prevNode.lat, prevNode.lon
+                            );
+
+                            // Add bidirectional edge
+                            const existingNeighbor = pathGraph.nodes[nodeId].neighbors.find(n => n.nodeId === prevNodeId);
+                            if (!existingNeighbor) {
+                                pathGraph.nodes[nodeId].neighbors.push({ nodeId: prevNodeId, distance });
+                            }
+
+                            if (pathGraph.nodes[prevNodeId]) {
+                                const existingReverse = pathGraph.nodes[prevNodeId].neighbors.find(n => n.nodeId === nodeId);
+                                if (!existingReverse) {
+                                    pathGraph.nodes[prevNodeId].neighbors.push({ nodeId, distance });
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Connect nearby nodes to handle gaps in OSM data
+            // This helps connect disconnected path segments
+            connectNearbyPathNodes(15); // Connect nodes within 15 meters
+
+            // Add building entrances to the path graph and connect them to nearby walkways
+            connectEntrancesToPathGraph();
+
+            // Create virtual paths through green spaces (quads, lawns) to allow traversal
+            connectPathsThroughGreenSpaces();
+
+            updateStatus(`✅ Path graph built: ${pathGraph.nodeIndex.length} nodes`);
+        }
+
+        // Add building entrances to the path graph and connect them to nearby walkway nodes
+        function connectEntrancesToPathGraph() {
+            let entrancesConnected = 0;
+
+            osmData.entrances.forEach(entrance => {
+                const entranceNodeId = `entrance-${entrance.id}`;
+
+                // Add entrance as a node in the path graph
+                if (!pathGraph.nodes[entranceNodeId]) {
+                    pathGraph.nodes[entranceNodeId] = {
+                        lat: entrance.lat,
+                        lon: entrance.lon,
+                        neighbors: [],
+                        isEntrance: true,
+                        buildingId: entrance.buildingId
+                    };
+                    pathGraph.nodeIndex.push(entranceNodeId);
+                }
+
+                // Find and connect to nearest walkway nodes (within 25 meters)
+                // that don't require crossing through other buildings
+                let connections = 0;
+                const maxDistance = 25; // meters
+
+                // Collect valid connections and sort by distance
+                const validConnections = [];
+
+                for (const nodeId of pathGraph.nodeIndex) {
+                    if (nodeId === entranceNodeId) continue;
+                    if (nodeId.startsWith('entrance-')) continue; // Skip other entrances
+
+                    const node = pathGraph.nodes[nodeId];
+                    const distance = calculateDistance(entrance.lat, entrance.lon, node.lat, node.lon);
+
+                    if (distance <= maxDistance) {
+                        // Check if connection would pass through a different building
+                        if (!lineIntersectsBuilding(entrance.lat, entrance.lon, node.lat, node.lon)) {
+                            validConnections.push({ nodeId, distance, node });
+                        }
+                    }
+                }
+
+                // Sort by distance and connect to closest valid nodes
+                validConnections.sort((a, b) => a.distance - b.distance);
+
+                for (const conn of validConnections) {
+                    pathGraph.nodes[entranceNodeId].neighbors.push({ nodeId: conn.nodeId, distance: conn.distance });
+                    conn.node.neighbors.push({ nodeId: entranceNodeId, distance: conn.distance });
+                    connections++;
+
+                    // Limit connections to avoid over-connecting
+                    if (connections >= 3) break;
+                }
+
+                if (connections > 0) {
+                    entrancesConnected++;
+                }
+            });
+
+            if (entrancesConnected > 0) {
+                updateStatus(`📍 Connected ${entrancesConnected} entrances to walkway network`);
+            }
+        }
+
+        // Create virtual paths through green spaces to allow direct traversal
+        // This enables routes to cross quads, lawns, and other open areas
+        function connectPathsThroughGreenSpaces() {
+            let connectionsCreated = 0;
+
+            osmData.greenSpaces.forEach(greenSpace => {
+                // Find all path nodes that are near or adjacent to this green space
+                const adjacentNodes = [];
+                const maxDistanceFromEdge = 20; // meters from green space edge
+
+                for (const nodeId of pathGraph.nodeIndex) {
+                    const node = pathGraph.nodes[nodeId];
+
+                    // Check if node is inside the green space
+                    if (pointInPolygon(node.lat, node.lon, greenSpace.coords)) {
+                        adjacentNodes.push({ nodeId, lat: node.lat, lon: node.lon, inside: true });
+                        continue;
+                    }
+
+                    // Check if node is near the edge of the green space
+                    let minDistToEdge = Infinity;
+                    for (const coord of greenSpace.coords) {
+                        const dist = calculateDistance(node.lat, node.lon, coord[0], coord[1]);
+                        minDistToEdge = Math.min(minDistToEdge, dist);
+                    }
+
+                    if (minDistToEdge <= maxDistanceFromEdge) {
+                        adjacentNodes.push({ nodeId, lat: node.lat, lon: node.lon, inside: false, distToEdge: minDistToEdge });
+                    }
+                }
+
+                // Connect nodes across the green space if they don't go through buildings
+                // and the connection passes through or near the green space
+                for (let i = 0; i < adjacentNodes.length; i++) {
+                    for (let j = i + 1; j < adjacentNodes.length; j++) {
+                        const nodeA = adjacentNodes[i];
+                        const nodeB = adjacentNodes[j];
+
+                        // Calculate distance between nodes
+                        const distance = calculateDistance(nodeA.lat, nodeA.lon, nodeB.lat, nodeB.lon);
+
+                        // Only connect if within reasonable walking distance across green space
+                        if (distance > 150) continue; // Max 150m across green space
+
+                        // Skip if already connected
+                        const nodeAData = pathGraph.nodes[nodeA.nodeId];
+                        const alreadyConnected = nodeAData.neighbors.some(n => n.nodeId === nodeB.nodeId);
+                        if (alreadyConnected) continue;
+
+                        // Check if the path between them goes through a building
+                        if (lineIntersectsBuilding(nodeA.lat, nodeA.lon, nodeB.lat, nodeB.lon)) {
+                            continue; // Don't connect through buildings
+                        }
+
+                        // Verify the connection actually crosses through or along the green space
+                        // by checking if the midpoint is in or near the green space
+                        const midLat = (nodeA.lat + nodeB.lat) / 2;
+                        const midLon = (nodeA.lon + nodeB.lon) / 2;
+                        const midInGreen = pointInPolygon(midLat, midLon, greenSpace.coords);
+
+                        let midNearGreen = false;
+                        if (!midInGreen) {
+                            for (const coord of greenSpace.coords) {
+                                if (calculateDistance(midLat, midLon, coord[0], coord[1]) < 30) {
+                                    midNearGreen = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (midInGreen || midNearGreen || nodeA.inside || nodeB.inside) {
+                            // Add bidirectional connection with slightly higher cost to prefer sidewalks when equal
+                            const adjustedDistance = distance * 1.1; // 10% penalty vs paved paths
+                            nodeAData.neighbors.push({ nodeId: nodeB.nodeId, distance: adjustedDistance });
+                            pathGraph.nodes[nodeB.nodeId].neighbors.push({ nodeId: nodeA.nodeId, distance: adjustedDistance });
+                            connectionsCreated++;
+                        }
+                    }
+                }
+            });
+
+            if (connectionsCreated > 0) {
+                updateStatus(`🌿 Created ${connectionsCreated} paths through green spaces`);
+            }
+        }
+
+        // Connect path nodes that are close to each other but not explicitly connected
+        // This handles gaps in OSM data where paths should connect but don't share nodes
+        function connectNearbyPathNodes(maxDistanceMeters) {
+            const connectionsMade = [];
+
+            // Build spatial index for efficiency (simple grid)
+            const gridSize = 0.0002; // ~20 meters in lat/lon
+            const grid = {};
+
+            for (const nodeId of pathGraph.nodeIndex) {
+                const node = pathGraph.nodes[nodeId];
+                const gridX = Math.floor(node.lon / gridSize);
+                const gridY = Math.floor(node.lat / gridSize);
+                const key = `${gridX},${gridY}`;
+
+                if (!grid[key]) grid[key] = [];
+                grid[key].push(nodeId);
+            }
+
+            // Check each node against nearby cells
+            for (const nodeId of pathGraph.nodeIndex) {
+                const node = pathGraph.nodes[nodeId];
+                const gridX = Math.floor(node.lon / gridSize);
+                const gridY = Math.floor(node.lat / gridSize);
+
+                // Check surrounding cells
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        const key = `${gridX + dx},${gridY + dy}`;
+                        const cellNodes = grid[key] || [];
+
+                        for (const otherNodeId of cellNodes) {
+                            if (nodeId === otherNodeId) continue;
+
+                            // Check if already connected
+                            const alreadyConnected = node.neighbors.some(n => n.nodeId === otherNodeId);
+                            if (alreadyConnected) continue;
+
+                            const otherNode = pathGraph.nodes[otherNodeId];
+                            const distance = calculateDistance(
+                                node.lat, node.lon,
+                                otherNode.lat, otherNode.lon
+                            );
+
+                            // Connect if within threshold and doesn't cut through a building
+                            if (distance <= maxDistanceMeters) {
+                                // Check if connection would pass through a building
+                                if (!lineIntersectsBuilding(node.lat, node.lon, otherNode.lat, otherNode.lon)) {
+                                    node.neighbors.push({ nodeId: otherNodeId, distance });
+                                    otherNode.neighbors.push({ nodeId: nodeId, distance });
+                                    connectionsMade.push([nodeId, otherNodeId]);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (connectionsMade.length > 0) {
+                updateStatus(`📍 Connected ${connectionsMade.length} nearby path segments`);
+            }
+        }
+
+        // Find nearest path node to a given coordinate that doesn't cut through buildings
+        function findNearestPathNode(lat, lon, avoidBuildingCrossing = true) {
+            let nearestNode = null;
+            let minDistance = Infinity;
+            let nearestNodeIgnoringBuildings = null;
+            let minDistanceIgnoringBuildings = Infinity;
+
+            for (const nodeId of pathGraph.nodeIndex) {
+                const node = pathGraph.nodes[nodeId];
+                const distance = calculateDistance(lat, lon, node.lat, node.lon);
+
+                // Track the absolute nearest node (fallback)
+                if (distance < minDistanceIgnoringBuildings) {
+                    minDistanceIgnoringBuildings = distance;
+                    nearestNodeIgnoringBuildings = { nodeId, lat: node.lat, lon: node.lon, distance };
+                }
+
+                // Check if connection would cut through a building
+                if (avoidBuildingCrossing && distance > 5) {
+                    // Only check for building intersection if not very close
+                    if (lineIntersectsBuilding(lat, lon, node.lat, node.lon)) {
+                        continue; // Skip this node - would cut through a building
+                    }
+                }
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestNode = { nodeId, lat: node.lat, lon: node.lon, distance };
+                }
+            }
+
+            // If we couldn't find a node without building crossing, use the fallback
+            // but only if we're within a reasonable distance
+            if (!nearestNode && nearestNodeIgnoringBuildings) {
+                return nearestNodeIgnoringBuildings;
+            }
+
+            return nearestNode;
+        }
+
+        // A* pathfinding algorithm
+        function findPath(startLat, startLon, endLat, endLon) {
+            // Find nearest path nodes to start and end points
+            const startNode = findNearestPathNode(startLat, startLon);
+            const endNode = findNearestPathNode(endLat, endLon);
+
+            if (!startNode || !endNode) {
+                return null; // No path nodes available
+            }
+
+            // A* algorithm
+            const openSet = new Set([startNode.nodeId]);
+            const cameFrom = {};
+            const gScore = {};
+            const fScore = {};
+
+            // Initialize scores
+            for (const nodeId of pathGraph.nodeIndex) {
+                gScore[nodeId] = Infinity;
+                fScore[nodeId] = Infinity;
+            }
+
+            gScore[startNode.nodeId] = 0;
+            fScore[startNode.nodeId] = heuristic(startNode.nodeId, endNode.nodeId);
+
+            while (openSet.size > 0) {
+                // Get node with lowest fScore
+                let current = null;
+                let lowestF = Infinity;
+
+                for (const nodeId of openSet) {
+                    if (fScore[nodeId] < lowestF) {
+                        lowestF = fScore[nodeId];
+                        current = nodeId;
+                    }
+                }
+
+                if (current === endNode.nodeId) {
+                    // Reconstruct path
+                    return reconstructPath(cameFrom, current, startNode, endNode, startLat, startLon, endLat, endLon);
+                }
+
+                openSet.delete(current);
+
+                const currentNode = pathGraph.nodes[current];
+                if (!currentNode) continue;
+
+                for (const neighbor of currentNode.neighbors) {
+                    const tentativeG = gScore[current] + neighbor.distance;
+
+                    if (tentativeG < gScore[neighbor.nodeId]) {
+                        cameFrom[neighbor.nodeId] = current;
+                        gScore[neighbor.nodeId] = tentativeG;
+                        fScore[neighbor.nodeId] = tentativeG + heuristic(neighbor.nodeId, endNode.nodeId);
+
+                        if (!openSet.has(neighbor.nodeId)) {
+                            openSet.add(neighbor.nodeId);
+                        }
+                    }
+                }
+            }
+
+            return null; // No path found
+        }
+
+        // Heuristic function for A* (straight-line distance)
+        function heuristic(nodeId1, nodeId2) {
+            const node1 = pathGraph.nodes[nodeId1];
+            const node2 = pathGraph.nodes[nodeId2];
+
+            if (!node1 || !node2) return Infinity;
+
+            return calculateDistance(node1.lat, node1.lon, node2.lat, node2.lon);
+        }
+
+        // Reconstruct the path from A* results
+        function reconstructPath(cameFrom, current, startNode, endNode, startLat, startLon, endLat, endLon) {
+            const path = [];
+
+            // Add the actual starting point
+            path.push([startLat, startLon]);
+
+            // Add path from start to first path node if not too close
+            if (startNode.distance > 5) {
+                path.push([startNode.lat, startNode.lon]);
+            }
+
+            // Reconstruct the main path
+            const mainPath = [];
+            let node = current;
+
+            while (cameFrom[node]) {
+                const pathNode = pathGraph.nodes[node];
+                if (pathNode) {
+                    mainPath.unshift([pathNode.lat, pathNode.lon]);
+                }
+                node = cameFrom[node];
+            }
+
+            // Add the start node of the path
+            const startPathNode = pathGraph.nodes[startNode.nodeId];
+            if (startPathNode && mainPath.length > 0) {
+                mainPath.unshift([startPathNode.lat, startPathNode.lon]);
+            }
+
+            path.push(...mainPath);
+
+            // Add connection to end point if not too close
+            if (endNode.distance > 5) {
+                path.push([endNode.lat, endNode.lon]);
+            }
+
+            // Add the actual ending point
+            path.push([endLat, endLon]);
+
+            // Calculate total distance
+            let totalDistance = 0;
+            for (let i = 1; i < path.length; i++) {
+                totalDistance += calculateDistance(
+                    path[i-1][0], path[i-1][1],
+                    path[i][0], path[i][1]
+                );
+            }
+
+            return { path, distance: totalDistance };
+        }
+
         // Load buildings onto map
         function loadBuildings() {
             layers.buildings.clearLayers();
@@ -276,9 +1389,9 @@
                     }
 
                     const polygon = L.polygon(coords, {
-                        color: '#2c5aa0',
-                        fillColor: '#3498db',
-                        fillOpacity: 0.6,
+                        color: '#51237f',
+                        fillColor: '#0095C8',
+                        fillOpacity: 0.5,
                         weight: 2
                     });
 
@@ -326,7 +1439,7 @@
                 const marker = L.marker([amenity.lat, amenity.lon], {
                     icon: L.divIcon({
                         className: 'amenity-marker',
-                        html: `<div style="background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid #e74c3c; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 16px;">${icon}</div>`,
+                        html: `<div style="background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid #51237f; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 16px;">${icon}</div>`,
                         iconSize: [30, 30],
                         iconAnchor: [15, 15]
                     })
@@ -397,31 +1510,85 @@
             }, 100);
         }
 
-        // Load campus.osm file automatically
+        // Campus bounding box for Montgomery College Rockville
+        const CAMPUS_BOUNDS = {
+            south: 39.0952,
+            west: -77.1646,
+            north: 39.1011,
+            east: -77.1516
+        };
+
+        // Load campus data from Overpass API (live OSM data)
         async function loadCampusData() {
-            updateStatus('Loading campus.osm file...');
+            updateStatus('Fetching latest campus data from OpenStreetMap...');
+
+            // Overpass API query for the campus area
+            const overpassQuery = `
+                [out:xml][timeout:30];
+                (
+                    // Get all nodes in the bounding box
+                    node(${CAMPUS_BOUNDS.south},${CAMPUS_BOUNDS.west},${CAMPUS_BOUNDS.north},${CAMPUS_BOUNDS.east});
+                    // Get all ways in the bounding box
+                    way(${CAMPUS_BOUNDS.south},${CAMPUS_BOUNDS.west},${CAMPUS_BOUNDS.north},${CAMPUS_BOUNDS.east});
+                    // Get all relations in the bounding box
+                    relation(${CAMPUS_BOUNDS.south},${CAMPUS_BOUNDS.west},${CAMPUS_BOUNDS.north},${CAMPUS_BOUNDS.east});
+                );
+                // Output with all node coordinates
+                out body;
+                >;
+                out skel qt;
+            `;
+
+            const overpassUrl = 'https://overpass-api.de/api/interpreter';
 
             try {
-                const response = await fetch('./campus.osm', {
-                    cache: 'no-store'
+                const response = await fetch(overpassUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'data=' + encodeURIComponent(overpassQuery)
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Failed to load campus.osm (${response.status})`);
+                    throw new Error(`Overpass API error (${response.status})`);
                 }
 
                 const xmlString = await response.text();
 
                 if (xmlString.length === 0) {
-                    throw new Error('campus.osm file is empty');
+                    throw new Error('Empty response from Overpass API');
                 }
 
-                updateStatus('✅ Campus.osm loaded successfully');
+                updateStatus('✅ Live OSM data fetched successfully');
                 parseOSMData(xmlString);
 
             } catch (error) {
-                updateStatus(`❌ Error loading campus data: ${error.message}`, true);
-                updateStatus('Make sure campus.osm is in the same directory as index.html', true);
+                updateStatus(`⚠️ Could not fetch live data: ${error.message}`, true);
+                updateStatus('Attempting to load local backup file...', false);
+
+                // Fall back to local file if API fails
+                try {
+                    const localResponse = await fetch('./campus.osm', {
+                        cache: 'no-store'
+                    });
+
+                    if (!localResponse.ok) {
+                        throw new Error(`Local file not found (${localResponse.status})`);
+                    }
+
+                    const localXml = await localResponse.text();
+                    if (localXml.length === 0) {
+                        throw new Error('Local backup file is empty');
+                    }
+
+                    updateStatus('✅ Loaded from local backup file');
+                    parseOSMData(localXml);
+
+                } catch (localError) {
+                    updateStatus(`❌ Error: ${localError.message}`, true);
+                    updateStatus('Please check your internet connection or ensure campus.osm exists', true);
+                }
             }
         }
 
@@ -451,12 +1618,6 @@
         });
 
         // Button event listeners
-        document.getElementById('clearAll').addEventListener('click', () => {
-            Object.values(layers).forEach(layer => layer.clearLayers());
-            allFeatures = [];
-            updateStatus('🗑️ Cleared all data');
-        });
-
         document.getElementById('fitBounds').addEventListener('click', () => {
             if (osmData.buildings.length > 0) {
                 const allCoords = osmData.buildings.flatMap(b => b.coords);
@@ -482,10 +1643,437 @@
             "Parking": layers.parking
         }, {position: 'bottomleft'}).addTo(map);
 
-        // Start loading when page is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            loadCampusData();
+        // =============================================
+        // DIRECTIONS FUNCTIONALITY
+        // =============================================
+
+        // Store for route layer
+        let routeLayer = null;
+        let routeMarkers = [];
+
+        // Calculate centroid of a polygon
+        function getPolygonCentroid(coords) {
+            let latSum = 0;
+            let lonSum = 0;
+            const n = coords.length;
+
+            for (let i = 0; i < n; i++) {
+                latSum += coords[i][0];
+                lonSum += coords[i][1];
+            }
+
+            return [latSum / n, lonSum / n];
+        }
+
+        // Calculate distance between two points using Haversine formula
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // Earth radius in meters
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distance in meters
+        }
+
+        // Estimate walking time (average walking speed ~1.4 m/s or ~5 km/h)
+        function estimateWalkingTime(distanceMeters) {
+            const walkingSpeed = 1.4; // meters per second
+            const seconds = distanceMeters / walkingSpeed;
+            const minutes = Math.ceil(seconds / 60);
+            return minutes;
+        }
+
+        // Get all locations for dropdown (buildings, amenities, parking)
+        function getAllLocations() {
+            const locations = [];
+
+            // Add buildings (exclude generic "Campus Building" entries)
+            osmData.buildings.forEach(building => {
+                // Skip buildings without proper names
+                if (building.name === 'Campus Building') return;
+
+                const centroid = getPolygonCentroid(building.coords);
+                const hasEntrances = building.entrances && building.entrances.length > 0;
+                locations.push({
+                    id: `building-${building.id}`,
+                    buildingId: building.id,  // Store the raw building ID for entrance lookup
+                    name: building.name,
+                    type: 'Building',
+                    lat: centroid[0],
+                    lon: centroid[1],
+                    hasEntrances: hasEntrances,
+                    entranceCount: hasEntrances ? building.entrances.length : 0
+                });
+            });
+
+            // Add amenities
+            osmData.amenities.forEach(amenity => {
+                const name = amenity.tags.name || amenity.type;
+                locations.push({
+                    id: `amenity-${amenity.id}`,
+                    name: name,
+                    type: 'Amenity',
+                    lat: amenity.lat,
+                    lon: amenity.lon
+                });
+            });
+
+            // Add parking areas
+            osmData.parking.forEach((parking, index) => {
+                const centroid = getPolygonCentroid(parking.coords);
+                locations.push({
+                    id: `parking-${parking.id}`,
+                    name: `Parking Area ${index + 1} (${parking.parking_type})`,
+                    type: 'Parking',
+                    lat: centroid[0],
+                    lon: centroid[1]
+                });
+            });
+
+            // Sort alphabetically by name
+            locations.sort((a, b) => a.name.localeCompare(b.name));
+
+            return locations;
+        }
+
+        // Populate direction dropdowns
+        function populateDirectionDropdowns() {
+            const fromSelect = document.getElementById('fromLocation');
+            const toSelect = document.getElementById('toLocation');
+
+            // Clear existing options except placeholder
+            fromSelect.innerHTML = '<option value="">-- Select starting point --</option>';
+            toSelect.innerHTML = '<option value="">-- Select destination --</option>';
+
+            const locations = getAllLocations();
+
+            // Group by type
+            const buildings = locations.filter(l => l.type === 'Building');
+            const amenities = locations.filter(l => l.type === 'Amenity');
+            const parking = locations.filter(l => l.type === 'Parking');
+
+            // Add building optgroup
+            if (buildings.length > 0) {
+                const buildingGroup = document.createElement('optgroup');
+                buildingGroup.label = '🏫 Buildings';
+                buildings.forEach(loc => {
+                    const option = document.createElement('option');
+                    // Include buildingId for entrance-based routing
+                    option.value = JSON.stringify({
+                        lat: loc.lat,
+                        lon: loc.lon,
+                        name: loc.name,
+                        buildingId: loc.buildingId
+                    });
+                    // Add indicator if building has defined entrances
+                    option.textContent = loc.hasEntrances ? `${loc.name} (${loc.entranceCount} entrances)` : loc.name;
+                    buildingGroup.appendChild(option);
+                });
+                fromSelect.appendChild(buildingGroup.cloneNode(true));
+                toSelect.appendChild(buildingGroup);
+            }
+
+            // Add amenity optgroup
+            if (amenities.length > 0) {
+                const amenityGroup = document.createElement('optgroup');
+                amenityGroup.label = '📍 Amenities';
+                amenities.forEach(loc => {
+                    const option = document.createElement('option');
+                    option.value = JSON.stringify({ lat: loc.lat, lon: loc.lon, name: loc.name });
+                    option.textContent = loc.name;
+                    amenityGroup.appendChild(option);
+                });
+                fromSelect.appendChild(amenityGroup.cloneNode(true));
+                toSelect.appendChild(amenityGroup);
+            }
+
+            // Add parking optgroup
+            if (parking.length > 0) {
+                const parkingGroup = document.createElement('optgroup');
+                parkingGroup.label = '🅿️ Parking';
+                parking.forEach(loc => {
+                    const option = document.createElement('option');
+                    option.value = JSON.stringify({ lat: loc.lat, lon: loc.lon, name: loc.name });
+                    option.textContent = loc.name;
+                    parkingGroup.appendChild(option);
+                });
+                fromSelect.appendChild(parkingGroup.cloneNode(true));
+                toSelect.appendChild(parkingGroup);
+            }
+        }
+
+        // Clear existing route from map
+        function clearRoute() {
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+                routeLayer = null;
+            }
+
+            routeMarkers.forEach(marker => map.removeLayer(marker));
+            routeMarkers = [];
+
+            document.getElementById('routeInfo').classList.remove('visible');
+            updateStatus('🗑️ Route cleared');
+        }
+
+        // Draw route between two points, using building entrances when available
+        function drawRoute(fromLoc, toLoc) {
+            // Clear any existing route
+            clearRoute();
+
+            let fromCoords = [fromLoc.lat, fromLoc.lon];
+            let toCoords = [toLoc.lat, toLoc.lon];
+            let routeCoords = [fromCoords, toCoords]; // Default to straight line
+            let distance = calculateDistance(fromLoc.lat, fromLoc.lon, toLoc.lat, toLoc.lon);
+            let usedPathfinding = false;
+            let usedEntrances = false;
+            let entranceInfo = '';
+
+            // Check if both locations are buildings with entrances
+            const isFromBuilding = fromLoc.buildingId !== undefined;
+            const isToBuilding = toLoc.buildingId !== undefined;
+
+            // Try to use entrance-based routing for buildings
+            if ((isFromBuilding || isToBuilding) && pathGraph.nodeIndex.length > 0) {
+                const bestPair = findBestEntrancePair(
+                    isFromBuilding ? fromLoc.buildingId : null,
+                    isToBuilding ? toLoc.buildingId : null,
+                    fromCoords,
+                    toCoords
+                );
+
+                if (bestPair) {
+                    // Update start/end coordinates to use entrances
+                    fromCoords = [bestPair.from.lat, bestPair.from.lon];
+                    toCoords = [bestPair.to.lat, bestPair.to.lon];
+
+                    if (bestPair.path) {
+                        routeCoords = bestPair.path;
+                        distance = bestPair.distance;
+                        usedPathfinding = true;
+                        usedEntrances = true;
+
+                        // Build entrance info string
+                        const fromEntrance = bestPair.from.entranceType ? ` (${bestPair.from.entranceType} entrance)` : '';
+                        const toEntrance = bestPair.to.entranceType ? ` (${bestPair.to.entranceType} entrance)` : '';
+                        entranceInfo = `${fromEntrance}${toEntrance}`;
+
+                        updateStatus(`📍 Using optimal entrances and campus walkways`);
+                    }
+                }
+            }
+
+            // Fall back to regular pathfinding if entrance-based routing didn't work
+            if (!usedPathfinding && pathGraph.nodeIndex.length > 0) {
+                const pathResult = findPath(fromLoc.lat, fromLoc.lon, toLoc.lat, toLoc.lon);
+
+                if (pathResult && pathResult.path.length > 2) {
+                    routeCoords = pathResult.path;
+                    distance = pathResult.distance;
+                    usedPathfinding = true;
+                    updateStatus('📍 Using campus walkways for route');
+                } else {
+                    updateStatus('⚠️ No walkway path found, showing direct route');
+                }
+            }
+
+            // Create route polyline
+            routeLayer = L.polyline(routeCoords, {
+                color: usedPathfinding ? '#0095C8' : '#51237f',
+                weight: usedPathfinding ? 5 : 4,
+                opacity: 0.85,
+                dashArray: usedPathfinding ? null : '10, 10',
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(map);
+
+            // Add start marker (at entrance if used, otherwise at centroid)
+            const startMarker = L.marker(fromCoords, {
+                icon: L.divIcon({
+                    className: 'route-marker',
+                    html: '<div style="background: #0095C8; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 14px; font-weight: bold;">A</div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                })
+            }).addTo(map);
+            const startPopupText = usedEntrances && fromLoc.buildingId
+                ? `<strong>Start:</strong> ${fromLoc.name}<br><em>Using nearest entrance</em>`
+                : `<strong>Start:</strong> ${fromLoc.name}`;
+            startMarker.bindPopup(startPopupText);
+            routeMarkers.push(startMarker);
+
+            // Add end marker (at entrance if used, otherwise at centroid)
+            const endMarker = L.marker(toCoords, {
+                icon: L.divIcon({
+                    className: 'route-marker',
+                    html: '<div style="background: #51237f; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 14px; font-weight: bold;">B</div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                })
+            }).addTo(map);
+            const endPopupText = usedEntrances && toLoc.buildingId
+                ? `<strong>Destination:</strong> ${toLoc.name}<br><em>Using nearest entrance</em>`
+                : `<strong>Destination:</strong> ${toLoc.name}`;
+            endMarker.bindPopup(endPopupText);
+            routeMarkers.push(endMarker);
+
+            // Calculate walking time
+            const walkingTime = estimateWalkingTime(distance);
+
+            // Update route info display
+            document.getElementById('routeDistance').textContent = distance < 1000
+                ? `${Math.round(distance)} m`
+                : `${(distance / 1000).toFixed(2)} km`;
+            document.getElementById('routeTime').textContent = walkingTime === 1
+                ? '~1 minute'
+                : `~${walkingTime} minutes`;
+            document.getElementById('routeFrom').textContent = fromLoc.name.length > 20
+                ? fromLoc.name.substring(0, 20) + '...'
+                : fromLoc.name;
+            document.getElementById('routeTo').textContent = toLoc.name.length > 20
+                ? toLoc.name.substring(0, 20) + '...'
+                : toLoc.name;
+
+            document.getElementById('routeInfo').classList.add('visible');
+
+            // Fit map to show entire route
+            map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+
+            const routeType = usedEntrances ? 'via entrances & walkways' : (usedPathfinding ? 'via walkways' : 'direct');
+            updateStatus(`🧭 Route: ${fromLoc.name} → ${toLoc.name} (${Math.round(distance)}m, ~${walkingTime} min, ${routeType})`);
+        }
+
+        // Event listeners for directions
+        document.getElementById('getDirections').addEventListener('click', function() {
+            const fromSelect = document.getElementById('fromLocation');
+            const toSelect = document.getElementById('toLocation');
+
+            if (!fromSelect.value || !toSelect.value) {
+                updateStatus('⚠️ Please select both starting point and destination', true);
+                return;
+            }
+
+            if (fromSelect.value === toSelect.value) {
+                updateStatus('⚠️ Starting point and destination cannot be the same', true);
+                return;
+            }
+
+            try {
+                const fromLoc = JSON.parse(fromSelect.value);
+                const toLoc = JSON.parse(toSelect.value);
+                drawRoute(fromLoc, toLoc);
+            } catch (error) {
+                updateStatus('❌ Error calculating route', true);
+            }
         });
+
+        document.getElementById('clearRoute').addEventListener('click', clearRoute);
+
+        document.getElementById('swapLocations').addEventListener('click', function() {
+            const fromSelect = document.getElementById('fromLocation');
+            const toSelect = document.getElementById('toLocation');
+
+            const tempValue = fromSelect.value;
+            fromSelect.value = toSelect.value;
+            toSelect.value = tempValue;
+
+            updateStatus('⇅ Swapped locations');
+        });
+
+        // Populate dropdowns after data is loaded
+        // Modified to call after OSM data is parsed
+        const originalParseOSMData = parseOSMData;
+        parseOSMData = function(xmlString) {
+            console.log('parseOSMData called, xmlString length:', xmlString ? xmlString.length : 0);
+            try {
+                originalParseOSMData(xmlString);
+                console.log('OSM data parsed, buildings:', osmData.buildings.length, 'amenities:', osmData.amenities.length);
+                // Populate dropdowns after a short delay to ensure data is ready
+                setTimeout(() => {
+                    console.log('Populating direction dropdowns...');
+                    populateDirectionDropdowns();
+                }, 2500);
+            } catch (error) {
+                console.error('Error in parseOSMData:', error);
+            }
+        };
+
+        // =============================================
+        // SIDE PANEL UI FUNCTIONALITY
+        // =============================================
+
+        // Panel toggle for mobile
+        const sidePanel = document.getElementById('sidePanel');
+        const panelToggle = document.getElementById('panelToggle');
+        const panelOverlay = document.getElementById('panelOverlay');
+
+        function togglePanel() {
+            sidePanel.classList.toggle('collapsed');
+            panelOverlay.classList.toggle('visible', !sidePanel.classList.contains('collapsed'));
+            panelToggle.textContent = sidePanel.classList.contains('collapsed') ? '☰' : '✕';
+        }
+
+        panelToggle.addEventListener('click', togglePanel);
+        panelOverlay.addEventListener('click', togglePanel);
+
+        // Section collapse functionality
+        document.querySelectorAll('.section-header').forEach(header => {
+            header.addEventListener('click', function() {
+                const sectionName = this.dataset.section;
+                const content = document.getElementById(sectionName + 'Section');
+
+                this.classList.toggle('collapsed');
+                content.classList.toggle('collapsed');
+            });
+        });
+
+        // Close panel on mobile after selecting a route
+        function closePanelOnMobile() {
+            if (window.innerWidth <= 768 && !sidePanel.classList.contains('collapsed')) {
+                togglePanel();
+            }
+        }
+
+        // Modify getDirections to close panel on mobile
+        const originalGetDirectionsHandler = document.getElementById('getDirections').onclick;
+        document.getElementById('getDirections').addEventListener('click', function() {
+            // Wait for route to be drawn, then close panel
+            setTimeout(closePanelOnMobile, 100);
+        });
+
+        // Initialize panel state for mobile
+        function initPanelState() {
+            if (window.innerWidth <= 768) {
+                sidePanel.classList.add('collapsed');
+                panelToggle.textContent = '☰';
+            } else {
+                sidePanel.classList.remove('collapsed');
+            }
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', initPanelState);
+
+        // Start loading when page is ready
+        function initializeApp() {
+            console.log('Initializing campus map application...');
+            initPanelState();
+            loadCampusData().then(() => {
+                console.log('Campus data loading initiated');
+            }).catch(err => {
+                console.error('Failed to load campus data:', err);
+            });
+        }
+
+        // Ensure initialization runs after DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            // DOM already loaded, run immediately
+            initializeApp();
+        }
 
         updateStatus('Initializing campus map...');
     </script>
