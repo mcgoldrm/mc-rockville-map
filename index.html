@@ -1752,15 +1752,6 @@
                 }
             });
 
-            // Auto-center map after all data is loaded
-            setTimeout(() => {
-                if (osmData.buildings.length > 0) {
-                    const firstBuilding = osmData.buildings[0];
-                    if (firstBuilding.coords.length > 0) {
-                        map.setView([firstBuilding.coords[0][0], firstBuilding.coords[0][1]], 17);
-                    }
-                }
-            }, 100);
         }
 
         // Campus bounding box for Montgomery College Rockville
