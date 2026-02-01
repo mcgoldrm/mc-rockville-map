@@ -43,6 +43,7 @@
             color: white;
             padding: 20px;
             flex-shrink: 0;
+            position: relative;
         }
 
         .panel-header h1 {
@@ -140,18 +141,53 @@
 
         .form-group select {
             width: 100%;
-            padding: 10px 12px;
+            padding: 12px 14px;
             border: 1px solid #dee2e6;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 16px;
             background: white;
             cursor: pointer;
             transition: border-color 0.2s;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        .form-group select option {
+            font-size: 18px;
+            padding: 12px;
+        }
+
+        .form-group select optgroup {
+            font-size: 18px;
+            font-weight: 600;
         }
 
         .form-group select:focus {
             outline: none;
             border-color: #51237f;
+        }
+
+        @media (max-width: 768px) {
+            .form-group select {
+                font-size: 18px;
+                padding: 14px 16px;
+                padding-right: 44px;
+            }
+
+            .form-group select option {
+                font-size: 20px;
+                padding: 14px;
+            }
+
+            .form-group select optgroup {
+                font-size: 20px;
+            }
         }
 
         .swap-btn {
@@ -311,6 +347,125 @@
             width: 100%;
         }
 
+        /* Map Controls (Search & Fit Campus) */
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* Hide map controls when side panel is open on mobile */
+        @media (max-width: 768px) {
+            .side-panel:not(.collapsed) ~ .map-container .map-controls {
+                display: none;
+            }
+        }
+
+        .map-search-container {
+            position: relative;
+        }
+
+        .map-search-input {
+            width: 250px;
+            padding: 10px 14px 10px 36px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            transition: box-shadow 0.2s;
+        }
+
+        .map-search-input:focus {
+            outline: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .map-search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        .fit-campus-btn {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #51237f;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            transition: background 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .fit-campus-btn:hover {
+            background: #3d1a5f;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        @media (max-width: 768px) {
+            .map-controls {
+                top: 10px;
+                left: 60px;
+                right: 10px;
+                gap: 8px;
+            }
+
+            .map-search-container {
+                flex: 1;
+                max-width: 200px;
+            }
+
+            .map-search-input {
+                width: 100%;
+            }
+
+            .fit-campus-btn span.btn-text {
+                display: none;
+            }
+
+            .fit-campus-btn {
+                padding: 10px;
+                flex-shrink: 0;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .map-controls {
+                left: 55px;
+                right: 10px;
+            }
+
+            .map-search-container {
+                max-width: none;
+                flex: 1;
+            }
+
+            .map-search-input {
+                width: 100%;
+                padding: 10px 10px 10px 32px;
+                font-size: 13px;
+            }
+
+            .map-search-icon {
+                left: 10px;
+                font-size: 12px;
+            }
+        }
+
         /* Mobile Toggle Button */
         .panel-toggle {
             display: none;
@@ -367,8 +522,38 @@
                 max-width: 100%;
             }
 
-            .side-panel:not(.collapsed) + .map-container .panel-toggle {
-                display: none;
+            /* Show close button inside panel on very small screens */
+            .side-panel:not(.collapsed) .panel-close-btn {
+                display: flex;
+            }
+        }
+
+        /* Close button inside panel header for mobile */
+        .panel-close-btn {
+            display: none;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            cursor: pointer;
+            font-size: 20px;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .panel-close-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        @media (max-width: 768px) {
+            .panel-close-btn {
+                display: flex;
             }
         }
 
@@ -406,6 +591,7 @@
     <!-- Side Panel -->
     <aside class="side-panel" id="sidePanel">
         <div class="panel-header">
+            <button class="panel-close-btn" id="panelCloseBtn" title="Close menu">✕</button>
             <h1>
                 <img src="https://media.montgomerycollege.edu/communications/marketing-communications-website/mclogos/assets/MClogo-stacked-white-no-background.png" alt="Montgomery College Logo" class="logo">
                 Rockville Campus Map
@@ -414,24 +600,9 @@
         </div>
 
         <div class="panel-content">
-            <!-- Search Section -->
-            <div class="panel-section">
-                <div class="section-header" data-section="search">
-                    <span>🔍 Search</span>
-                    <span class="toggle-icon">▼</span>
-                </div>
-                <div class="section-content" id="searchSection">
-                    <input type="text" id="buildingSearch" class="search-input" placeholder="Search buildings, amenities..." />
-                </div>
-            </div>
-
             <!-- Directions Section -->
             <div class="panel-section">
-                <div class="section-header" data-section="directions">
-                    <span>🧭 Get Directions</span>
-                    <span class="toggle-icon">▼</span>
-                </div>
-                <div class="section-content" id="directionsSection">
+                <div class="section-content" id="directionsSection" style="padding-top: 20px;">
                     <div class="form-group">
                         <label for="fromLocation">From</label>
                         <select id="fromLocation">
@@ -474,21 +645,6 @@
                 </div>
             </div>
 
-            <!-- Quick Actions Section -->
-            <div class="panel-section">
-                <div class="section-header" data-section="actions">
-                    <span>⚡ Quick Actions</span>
-                    <span class="toggle-icon">▼</span>
-                </div>
-                <div class="section-content" id="actionsSection">
-                    <div class="quick-actions">
-                        <button class="quick-btn" id="fitBounds">
-                            <span class="icon">🎯</span>
-                            Fit Campus
-                        </button>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Hidden status for internal use -->
@@ -499,6 +655,19 @@
     <div class="map-container">
         <button class="panel-toggle" id="panelToggle" title="Toggle menu">☰</button>
         <div class="panel-overlay" id="panelOverlay"></div>
+
+        <!-- Map Controls -->
+        <div class="map-controls">
+            <div class="map-search-container">
+                <span class="map-search-icon">🔍</span>
+                <input type="text" id="buildingSearch" class="map-search-input" placeholder="Search buildings, amenities..." />
+            </div>
+            <button class="fit-campus-btn" id="fitBounds" title="Fit to campus">
+                <span>🎯</span>
+                <span class="btn-text">Fit Campus</span>
+            </button>
+        </div>
+
         <div id="map"></div>
     </div>
 
@@ -506,8 +675,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
     <script>
-        // Initialize map centered on Montgomery College
-        const map = L.map('map').setView([39.0982, -77.1591], 17);
+        // Initialize map centered on the Becker Family Quad
+        const QUAD_CENTER = [39.0979, -77.1594];
+        const map = L.map('map').setView(QUAD_CENTER, 17);
 
         // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1632,7 +1802,7 @@
                 }
             }
 
-            map.setView([39.0982, -77.1591], 17);
+            map.setView(QUAD_CENTER, 17);
             updateStatus('🎯 Centered on campus');
         });
 
@@ -2008,6 +2178,7 @@
         const sidePanel = document.getElementById('sidePanel');
         const panelToggle = document.getElementById('panelToggle');
         const panelOverlay = document.getElementById('panelOverlay');
+        const panelCloseBtn = document.getElementById('panelCloseBtn');
 
         function togglePanel() {
             sidePanel.classList.toggle('collapsed');
@@ -2017,6 +2188,7 @@
 
         panelToggle.addEventListener('click', togglePanel);
         panelOverlay.addEventListener('click', togglePanel);
+        panelCloseBtn.addEventListener('click', togglePanel);
 
         // Section collapse functionality
         document.querySelectorAll('.section-header').forEach(header => {
